@@ -322,26 +322,28 @@ export default function App() {
             </div>
             {nextToRead ? (
               <div className="bg-white border border-line p-6 featured-accent">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">
-                  {nextToRead.phase} • {nextToRead.format}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">
+                    {nextToRead.phase} • {nextToRead.format}
+                  </div>
+                  <a 
+                    href={`https://www.google.com/search?q=site:starwars.fandom.com+${encodeURIComponent(`"${nextToRead.title}" High Republic`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/link block mb-4"
+                  >
+                    <h2 className="font-serif text-xl font-bold leading-tight group-hover/link:text-accent transition-colors flex items-start gap-2">
+                      {nextToRead.title}
+                      <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity mt-1 shrink-0" />
+                    </h2>
+                  </a>
+                  <button 
+                    onClick={() => toggleRead(nextToRead.id)}
+                    className="bg-ink text-white w-full py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-accent transition-colors cursor-pointer"
+                  >
+                    Mark Finished
+                  </button>
                 </div>
-                <a 
-                  href={`https://starwars.fandom.com/wiki/${nextToRead.title.replace(/\s+/g, '_')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group/link block mb-4"
-                >
-                  <h2 className="font-serif text-xl font-bold leading-tight group-hover/link:text-accent transition-colors flex items-start gap-2">
-                    {nextToRead.title}
-                    <ExternalLink size={12} className="opacity-0 group-hover/link:opacity-100 transition-opacity mt-1 shrink-0" />
-                  </h2>
-                </a>
-                <button 
-                  onClick={() => toggleRead(nextToRead.id)}
-                  className="bg-ink text-white w-full py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-accent transition-colors cursor-pointer"
-                >
-                  Mark Finished
-                </button>
               </div>
             ) : (
               <div className="bg-white border border-line p-6 italic text-sm text-muted">
@@ -501,19 +503,32 @@ export default function App() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   key={book.id}
-                  onClick={() => toggleRead(book.id)}
-                  className={`grid grid-cols-[40px_1fr_120px_100px] py-4 border-b border-line items-center cursor-pointer group transition-opacity ${book.read ? 'opacity-40 line-through' : 'opacity-100 hover:bg-ink/5'}`}
+                  className={`grid grid-cols-[40px_1fr_120px_100px] py-4 border-b border-line items-center group transition-opacity ${book.read ? 'opacity-40 line-through' : 'opacity-100 hover:bg-ink/5'}`}
                 >
                   <div className="flex justify-center">
-                    <div className={`custom-checkbox-square ${book.read ? 'checked' : ''}`}>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRead(book.id);
+                      }}
+                      className={`custom-checkbox-square ${book.read ? 'checked' : ''}`}
+                    >
                       {book.read && <Check size={12} className="text-white" strokeWidth={3} />}
-                    </div>
+                    </button>
                   </div>
                   
                   <div className="pr-4">
-                    <h3 className="font-serif text-[1.1rem] font-semibold leading-tight text-ink group-hover:text-accent transition-colors">
-                      {book.title}
-                    </h3>
+                    <a 
+                      href={`https://www.google.com/search?q=site:starwars.fandom.com+${encodeURIComponent(`"${book.title}" High Republic`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block"
+                    >
+                      <h3 className="font-serif text-[1.1rem] font-semibold leading-tight text-ink hover:text-accent transition-colors flex items-center gap-2">
+                        {book.title}
+                        <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </h3>
+                    </a>
                     <div className="sm:hidden flex gap-2 mt-1">
                       <span className="text-[9px] font-bold text-accent uppercase tracking-wider">{book.phase}</span>
                       <span className="text-[9px] font-medium text-muted uppercase tracking-wider">{book.format}</span>
@@ -548,10 +563,6 @@ export default function App() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
               Published by S. Kheraj (2026)
             </p>
-            <div className="flex gap-4">
-               <Github size={14} className="cursor-pointer hover:text-accent" />
-               <ExternalLink size={14} className="cursor-pointer hover:text-accent" />
-            </div>
           </footer>
         </main>
       </div>
