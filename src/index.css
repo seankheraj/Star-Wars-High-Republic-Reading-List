@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: 'Cormorant Garamond', serif;
+  
+  --color-paper: #F9F7F2;
+  --color-ink: #121212;
+  --color-accent: #B08D57;
+  --color-muted: #757575;
+  --color-line: rgba(18, 18, 18, 0.1);
+}
+
+@layer base {
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+  }
+}
+
+/* Editorial Specific Styles */
+.editorial-header-line {
+  @apply border-b-2 border-ink;
+}
+
+.editorial-divider {
+  @apply border-b border-line;
+}
+
+.featured-accent {
+  position: relative;
+}
+
+.featured-accent::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  @apply w-10 h-10 border-t-4 border-l-4 border-accent;
+}
+
+.custom-checkbox-square {
+  @apply w-[18px] h-[18px] border-[1.5px] border-ink rounded-[2px] flex items-center justify-center transition-all cursor-pointer;
+}
+
+.custom-checkbox-square.checked {
+  @apply bg-accent border-accent;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-paper;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-line rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-accent/40;
+}
