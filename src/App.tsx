@@ -18,7 +18,9 @@ import {
   Github,
   Moon,
   Sun,
-  Palette
+  Palette,
+  Menu,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -36,6 +38,7 @@ export default function App() {
   const [filterFormat, setFilterFormat] = useState<Format | 'All'>('All');
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ lastSync: null, status: 'idle' });
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Persist local changes
   useEffect(() => {
@@ -136,14 +139,23 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-paper text-ink">
       {/* Header */}
-      <header className="px-10 lg:px-16 pt-10 pb-6 border-b border-line flex justify-between items-end shrink-0">
-        <div className="brand">
-          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.4em] text-accent uppercase block mb-2 leading-none">
-            Star Wars
-          </span>
-          <h1 className="font-serif text-4xl sm:text-6xl font-black uppercase tracking-tighter leading-[0.8]">
-            The High Republic
-          </h1>
+      <header className="px-6 sm:px-10 lg:px-16 pt-10 pb-6 border-b border-line flex justify-between items-end shrink-0 relative z-40 bg-paper">
+        <div className="brand flex items-center gap-4">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-2 text-ink hover:text-accent transition-colors"
+            aria-label="Open Menu"
+          >
+            <Menu size={24} />
+          </button>
+          <div>
+            <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.4em] text-accent uppercase block mb-2 leading-none">
+              Star Wars
+            </span>
+            <h1 className="font-serif text-3xl sm:text-6xl font-black uppercase tracking-tighter leading-[0.8]">
+              The High Republic
+            </h1>
+          </div>
         </div>
         
         <div className="hidden sm:flex items-center gap-6 text-right">
@@ -208,9 +220,37 @@ export default function App() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar Backdrop (Mobile) */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-ink/20 backdrop-blur-sm z-40 lg:hidden"
+            />
+          )}
+        </AnimatePresence>
+
         {/* Sidebar */}
-        <aside className="hidden lg:flex w-80 px-10 py-10 border-r border-line flex-col gap-10 shrink-0 overflow-y-auto">
+        <motion.aside 
+          initial={false}
+          animate={{ x: isSidebarOpen ? 0 : (typeof window !== 'undefined' && window.innerWidth < 1024 ? -320 : 0) }}
+          className={`fixed inset-y-0 left-0 z-50 w-80 px-10 py-10 border-r border-line flex-col gap-10 shrink-0 overflow-y-auto bg-paper lg:static lg:flex lg:translate-x-0 transition-none`}
+        >
+          {/* Mobile Close Button */}
+          <div className="lg:hidden flex justify-between items-center mb-4 border-b border-line pb-4">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Navigation</span>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-2 -mr-2 text-ink"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
           {/* Now Reading / Next Up */}
           <section>
              <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-3">
@@ -255,7 +295,10 @@ export default function App() {
               {(['All', 'Phase 1', 'Phase 2', 'Phase 3'] as const).map((p) => (
                 <li 
                   key={p} 
-                  onClick={() => setFilterPhase(p as any)}
+                  onClick={() => {
+                    setFilterPhase(p as any);
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
                   className={`flex justify-between items-center py-2 text-[11px] uppercase tracking-widest cursor-pointer border-b transition-all ${
                     filterPhase === p ? 'text-ink font-bold border-ink' : 'text-muted border-line hover:text-ink'
                   }`}
@@ -287,7 +330,10 @@ export default function App() {
               )}
             </AnimatePresence>
             <button 
-              onClick={() => handleSync(books)}
+              onClick={() => {
+                handleSync(books);
+                if (window.innerWidth < 1024) setIsSidebarOpen(false);
+              }}
               className={`flex w-full items-center justify-center gap-2 py-3 border border-ink text-[10px] font-bold uppercase tracking-widest transition-all ${
                 syncStatus.status === 'syncing' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink hover:text-white'
               }`}
@@ -296,7 +342,7 @@ export default function App() {
               {syncStatus.status === 'syncing' ? 'Synchronizing...' : 'Sync with Cloud'}
             </button>
           </div>
-        </aside>
+        </motion.aside>
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto px-10 lg:px-16 py-10">
