@@ -2,10 +2,12 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # This runs every time you save code
+    branches: ["main"]
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
@@ -18,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # We removed the 'cache' line here to prevent the error you saw
 
       - name: Install dependencies
         run: npm install
@@ -31,4 +33,5 @@ jobs:
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist # This moves your finished app to the web
+          folder: dist
+          branch: gh-pages
