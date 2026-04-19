@@ -40,6 +40,70 @@ export default function App() {
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const fetchFromSheet = async (isManual = false) => {
+    if (!SCRIPT_URL || !SCRIPT_URL.includes('script.google.com')) {
+      if (isManual) {
+        setSyncStatus({ 
+          lastSync: new Date(), 
+          status: 'error', 
+          message: 'Cloud URL not configured' 
+        });
+      }
+      return;
+    }
+
+    setSyncStatus(prev => ({ 
+      ...prev, 
+      status: 'syncing', 
+      message: isManual ? 'Fetching latest records...' : 'Syncing with cloud...' 
+    }));
+
+    try {
+      const response = await fetch(SCRIPT_URL);
+      if (!response.ok) throw new Error('Cloud unreachable');
+      
+      const sheetData = await response.json();
+      
+      if (Array.isArray(sheetData)) {
+        setBooks(currentBooks => {
+          const updated = currentBooks.map(book => {
+            const match = sheetData.find(s => 
+              s.title?.toString().trim().toLowerCase() === book.title.trim().toLowerCase()
+            );
+            if (match) {
+              const isRead = match.read === true || 
+                            match.read === 'TRUE' || 
+                            match.read === 'true' || 
+                            match.read === 1;
+              return { ...book, read: isRead };
+            }
+            return book;
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          return updated;
+        });
+
+        setSyncStatus({ 
+          lastSync: new Date(), 
+          status: 'success', 
+          message: isManual ? 'Records Refreshed' : 'Records Synchronized' 
+        });
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      setSyncStatus({ 
+        lastSync: new Date(), 
+        status: 'error', 
+        message: 'Cloud Fetch Failed' 
+      });
+    }
+  };
+
+  // Sync with Cloud on startup
+  useEffect(() => {
+    fetchFromSheet();
+  }, []);
+
   // Persist local changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
@@ -314,7 +378,7 @@ export default function App() {
             </ul>
           </nav>
 
-          {/* Sync Button */}
+          {/* Sync Buttons */}
           <div className="mt-auto space-y-2">
             <AnimatePresence>
               {isAutoSyncing && (
@@ -329,18 +393,35 @@ export default function App() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <button 
-              onClick={() => {
-                handleSync(books);
-                if (window.innerWidth < 1024) setIsSidebarOpen(false);
-              }}
-              className={`flex w-full items-center justify-center gap-2 py-3 border border-ink text-[10px] font-bold uppercase tracking-widest transition-all ${
-                syncStatus.status === 'syncing' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink hover:text-white'
-              }`}
-            >
-              <RefreshCcw size={14} className={syncStatus.status === 'syncing' ? 'animate-spin' : ''} />
-              {syncStatus.status === 'syncing' ? 'Synchronizing...' : 'Sync with Cloud'}
-            </button>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => {
+                  fetchFromSheet(true);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+                className={`flex items-center justify-center gap-2 py-3 border border-line text-[9px] font-bold uppercase tracking-widest transition-all hover:bg-line hover:text-ink`}
+              >
+                <BookOpen size={12} />
+                Pull
+              </button>
+              <button 
+                onClick={() => {
+                  handleSync(books);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+                className={`flex items-center justify-center gap-2 py-3 border border-ink text-[9px] font-bold uppercase tracking-widest transition-all ${
+                  syncStatus.status === 'syncing' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-ink hover:text-white'
+                }`}
+              >
+                <RefreshCcw size={12} className={syncStatus.status === 'syncing' ? 'animate-spin' : ''} />
+                Push
+              </button>
+            </div>
+            
+            <p className="text-[8px] text-muted text-center uppercase tracking-tighter">
+              Manual Sync: Pull (latest from sheet) or Push (save app progress)
+            </p>
           </div>
         </motion.aside>
 
@@ -465,7 +546,7 @@ export default function App() {
           
           <footer className="mt-20 pt-10 border-t border-line flex flex-col sm:flex-row justify-between items-center gap-6 opacity-60">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
-              Published by the Office of the Grand Master &copy; 2026
+              Published by S. Kheraj (2026)
             </p>
             <div className="flex gap-4">
                <Github size={14} className="cursor-pointer hover:text-accent" />
