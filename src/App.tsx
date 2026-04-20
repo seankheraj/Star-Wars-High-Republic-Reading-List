@@ -27,47 +27,57 @@ import { motion, AnimatePresence } from 'motion/react';
 const STORAGE_KEY = 'high-republic-reading-list';
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
 
+/**
+ * SmartLink Resolution:
+ * Instead of showing a search results page, we use DuckDuckGo's "I'm Feeling Lucky" (!) bang
+ * restricted to starwars.fandom.com. This instantly redirects the user to the most 
+ * relevant Wookieepedia page.
+ */
+const getSmartLink = (title: string) => {
+  const query = `site:starwars.fandom.com "${title}" High Republic`;
+  return `https://duckduckgo.com/?q=!+${encodeURIComponent(query)}`;
+};
+
 function BookCover({ title }: { title: string }) {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(true);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const fallbackUrl = 'https://static.wikia.nocookie.net/starwars/images/a/ad/High_Republic_symbol.svg/revision/latest?cb=20250517185050';
 
   useEffect(() => {
     let active = true;
     const fetchCover = async () => {
-      setLoading(true);
+      setIsFetching(true);
+      setIsImageLoaded(false);
       try {
-        // We use a proxy-like pattern via a reliable image hosting pattern or Google Image Search metadata
-        // For Youtini, their images follow a standardized pattern on their CDN
-        // Alternatively, searching for the specific youtini product page often yields the cover
-        
-        // Strategy: Use a search-based thumbnail service or specific metadata API if available.
-        // Given constraints, we'll implement a more robust fetcher that tries to find the image.
-        
-        const searchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(`${title} Star Wars cover youtini`)}&searchType=image&key=${import.meta.env.VITE_GOOGLE_SEARCH_API_KEY}&cx=${import.meta.env.VITE_GOOGLE_SEARCH_CX}&num=1`;
-        
-        // If the user hasn't provided API keys, we'll use a smart fallback or a direct Youtini URL pattern
-        // Youtini uses a specific slug system: youtini.com/book/[slug]
-        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        const directUrl = `https://youtini.com/book/${slug}`;
-        
-        // Since we can't easily scrape server-side here without a custom backend, 
-        // we'll use the Open Library API which identifies the covers for many SW books perfectly:
-        // We prepend "Star Wars" to the title to ensure we get the correct IP's cover.
+        // Strategy: Try Open Library with "Star Wars" prefix
         const olUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(`Star Wars ${title}`)}&limit=1`;
         const res = await fetch(olUrl);
         const data = await res.json();
         
-        if (data.docs?.[0]?.cover_i) {
-          if (active) setCoverUrl(`https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-L.jpg`);
-        } else {
-          // Official High Republic Symbol fallback
-          if (active) setCoverUrl(`https://static.wikia.nocookie.net/starwars/images/a/ad/High_Republic_symbol.svg/revision/latest?cb=20250517185050`);
+        if (active) {
+          if (data.docs?.[0]?.cover_i) {
+            setCoverUrl(`https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-L.jpg`);
+          } else {
+            // Fallback to Wikipedia Page Images API
+            const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(title)}&pithumbsize=500&origin=*`;
+            const wikiRes = await fetch(wikiUrl);
+            const wikiData = await wikiRes.json();
+            const pages = wikiData.query.pages;
+            const pageId = Object.keys(pages)[0];
+            
+            if (pageId !== "-1" && pages[pageId].thumbnail) {
+              setCoverUrl(pages[pageId].thumbnail.source);
+            } else {
+              setCoverUrl(fallbackUrl);
+            }
+          }
         }
       } catch (err) {
         console.error("Cover error:", err);
-        if (active) setCoverUrl(`https://static.wikia.nocookie.net/starwars/images/a/ad/High_Republic_symbol.svg/revision/latest?cb=20250517185050`);
+        if (active) setCoverUrl(fallbackUrl);
       } finally {
-        if (active) setLoading(false);
+        if (active) setIsFetching(false);
       }
     };
 
@@ -75,9 +85,11 @@ function BookCover({ title }: { title: string }) {
     return () => { active = false; };
   }, [title]);
 
+  const showLoader = isFetching || !isImageLoaded;
+
   return (
     <div className="w-full aspect-[2/3] bg-paper overflow-hidden border border-line relative group">
-      {loading && (
+      {showLoader && (
         <div className="absolute inset-0 flex items-center justify-center bg-paper/80 z-10 backdrop-blur-sm">
           <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
@@ -87,12 +99,20 @@ function BookCover({ title }: { title: string }) {
           src={coverUrl}
           alt={title}
           referrerPolicy="no-referrer"
-          className={`w-full h-full object-cover transition-all duration-700 ${loading ? 'opacity-0 scale-105' : 'opacity-100 scale-100 grayscale-[0.3] group-hover:grayscale-0'}`}
-          onLoad={() => setLoading(false)}
+          className={`w-full h-full object-cover transition-all duration-700 ${showLoader ? 'opacity-0 scale-105' : 'opacity-100 scale-100 grayscale-[0.3] group-hover:grayscale-0'}`}
+          onLoad={() => setIsImageLoaded(true)}
+          onError={(e) => {
+            // If the primary image fails, fallback to the symbol
+            if (coverUrl !== fallbackUrl) {
+              setCoverUrl(fallbackUrl);
+            } else {
+              setIsImageLoaded(true); // Don't hang on fallback error
+            }
+          }}
         />
       )}
       <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="text-[8px] font-bold text-white uppercase tracking-widest">Source: Youtini/OpenLibrary</span>
+        <span className="text-[8px] font-bold text-white uppercase tracking-widest">Source: Star Wars Database</span>
       </div>
     </div>
   );
@@ -399,7 +419,7 @@ export default function App() {
                     {nextToRead.phase} • {nextToRead.format}
                   </div>
                   <a 
-                    href={`https://www.google.com/search?q=site:starwars.fandom.com+${encodeURIComponent(`"${nextToRead.title}" High Republic`)}`}
+                    href={getSmartLink(nextToRead.title)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group/link block mb-4"
@@ -591,7 +611,7 @@ export default function App() {
                   
                   <div className="pr-4">
                     <a 
-                      href={`https://www.google.com/search?q=site:starwars.fandom.com+${encodeURIComponent(`"${book.title}" High Republic`)}`}
+                      href={getSmartLink(book.title)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block"
