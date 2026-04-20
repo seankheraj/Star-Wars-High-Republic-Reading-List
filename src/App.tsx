@@ -30,11 +30,11 @@ const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
 /**
  * SmartLink Resolution:
  * Instead of showing a search results page, we use DuckDuckGo's "I'm Feeling Lucky" (!) bang
- * restricted to starwars.fandom.com. This instantly redirects the user to the most 
- * relevant Wookieepedia page.
+ * restricted to youtini.com. This instantly redirects the user to the most 
+ * relevant guide or product page on Youtini.
  */
 const getSmartLink = (title: string) => {
-  const query = `site:starwars.fandom.com "${title}" High Republic`;
+  const query = `site:youtini.com "${title}" High Republic`;
   return `https://duckduckgo.com/?q=!+${encodeURIComponent(query)}`;
 };
 
