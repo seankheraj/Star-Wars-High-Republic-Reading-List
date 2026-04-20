@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, FC } from 'react';
 import { HIGH_REPUBLIC_DATA } from './data';
 import { Book, Phase, Format, SyncStatus } from './types';
 import { 
@@ -38,18 +38,28 @@ const getSmartLink = (title: string) => {
   return `https://duckduckgo.com/?q=!+${encodeURIComponent(query)}`;
 };
 
-function BookCover({ title, initialCoverUrl }: { title: string; initialCoverUrl?: string }) {
+const BookCover: FC<{ title: string; initialCoverUrl?: string }> = ({ title, initialCoverUrl }) => {
   const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl || null);
   const [isFetching, setIsFetching] = useState(!initialCoverUrl);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
   const fallbackUrl = 'https://static.wikia.nocookie.net/starwars/images/a/ad/High_Republic_symbol.svg/revision/latest?cb=20250517185050';
 
   useEffect(() => {
-    // If we have a hardcoded URL, don't fetch unless it's a new title
+    // Check if image is already complete (cached)
+    if (imgRef.current?.complete) {
+      setIsImageLoaded(true);
+    }
+  }, [coverUrl]);
+
+  useEffect(() => {
+    // If we have a hardcoded URL, don't fetch
     if (initialCoverUrl) {
-      setCoverUrl(initialCoverUrl);
+      if (coverUrl !== initialCoverUrl) {
+        setCoverUrl(initialCoverUrl);
+        setIsImageLoaded(false);
+      }
       setIsFetching(false);
-      setIsImageLoaded(false);
       return;
     }
 
@@ -108,6 +118,7 @@ function BookCover({ title, initialCoverUrl }: { title: string; initialCoverUrl?
       )}
       {coverUrl && (
         <img 
+          ref={imgRef}
           src={coverUrl}
           alt={title}
           referrerPolicy="no-referrer"
@@ -445,7 +456,7 @@ export default function App() {
             </div>
             {nextToRead ? (
               <div className="bg-white border border-line p-6 featured-accent flex flex-col gap-4">
-                <BookCover title={nextToRead.title} initialCoverUrl={nextToRead.coverUrl} />
+                <BookCover key={nextToRead.id} title={nextToRead.title} initialCoverUrl={nextToRead.coverUrl} />
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">
                     {nextToRead.phase} • {nextToRead.format}
