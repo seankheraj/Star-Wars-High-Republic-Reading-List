@@ -17,6 +17,7 @@ export interface Book {
   phase: Phase;
   format: Format;
   read: boolean;
+  coverUrl?: string;
 }
 
 export interface SyncStatus {

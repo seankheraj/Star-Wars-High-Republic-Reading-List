@@ -38,13 +38,21 @@ const getSmartLink = (title: string) => {
   return `https://duckduckgo.com/?q=!+${encodeURIComponent(query)}`;
 };
 
-function BookCover({ title }: { title: string }) {
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(true);
+function BookCover({ title, initialCoverUrl }: { title: string; initialCoverUrl?: string }) {
+  const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl || null);
+  const [isFetching, setIsFetching] = useState(!initialCoverUrl);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const fallbackUrl = 'https://static.wikia.nocookie.net/starwars/images/a/ad/High_Republic_symbol.svg/revision/latest?cb=20250517185050';
 
   useEffect(() => {
+    // If we have a hardcoded URL, don't fetch unless it's a new title
+    if (initialCoverUrl) {
+      setCoverUrl(initialCoverUrl);
+      setIsFetching(false);
+      setIsImageLoaded(false);
+      return;
+    }
+
     let active = true;
     const fetchCover = async () => {
       setIsFetching(true);
@@ -63,11 +71,15 @@ function BookCover({ title }: { title: string }) {
             const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&titles=${encodeURIComponent(title)}&pithumbsize=500&origin=*`;
             const wikiRes = await fetch(wikiUrl);
             const wikiData = await wikiRes.json();
-            const pages = wikiData.query.pages;
-            const pageId = Object.keys(pages)[0];
+            const pages = wikiData?.query?.pages;
             
-            if (pageId !== "-1" && pages[pageId].thumbnail) {
-              setCoverUrl(pages[pageId].thumbnail.source);
+            if (active && pages) {
+              const pageId = Object.keys(pages)[0];
+              if (pageId !== "-1" && pages[pageId].thumbnail) {
+                setCoverUrl(pages[pageId].thumbnail.source);
+              } else {
+                setCoverUrl(fallbackUrl);
+              }
             } else {
               setCoverUrl(fallbackUrl);
             }
@@ -83,7 +95,7 @@ function BookCover({ title }: { title: string }) {
 
     fetchCover();
     return () => { active = false; };
-  }, [title]);
+  }, [title, initialCoverUrl]);
 
   const showLoader = isFetching || !isImageLoaded;
 
@@ -121,7 +133,18 @@ function BookCover({ title }: { title: string }) {
 export default function App() {
   const [books, setBooks] = useState<Book[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : HIGH_REPUBLIC_DATA;
+    if (!saved) return HIGH_REPUBLIC_DATA;
+    
+    try {
+      const savedBooks = JSON.parse(saved) as Book[];
+      // Merge saved 'read' state into the latest HIGH_REPUBLIC_DATA to ensure we have coverUrls
+      return HIGH_REPUBLIC_DATA.map(book => {
+        const savedBook = savedBooks.find(sb => sb.id === book.id);
+        return savedBook ? { ...book, read: savedBook.read } : book;
+      });
+    } catch (e) {
+      return HIGH_REPUBLIC_DATA;
+    }
   });
 
   const [search, setSearch] = useState('');
@@ -413,7 +436,7 @@ export default function App() {
             </div>
             {nextToRead ? (
               <div className="bg-white border border-line p-6 featured-accent flex flex-col gap-4">
-                <BookCover title={nextToRead.title} />
+                <BookCover title={nextToRead.title} initialCoverUrl={nextToRead.coverUrl} />
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">
                     {nextToRead.phase} • {nextToRead.format}
