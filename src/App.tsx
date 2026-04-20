@@ -318,7 +318,7 @@ export default function App() {
     <div className="flex flex-col h-screen overflow-hidden bg-paper text-ink">
       {/* Header */}
       <header className="px-6 sm:px-10 lg:px-16 pt-10 pb-6 border-b border-line flex justify-between items-end shrink-0 relative z-40 bg-paper">
-        <div className="brand flex items-center gap-4">
+        <div className="brand flex items-center gap-6">
           <button 
             onClick={() => setIsSidebarOpen(true)}
             className="lg:hidden p-2 -ml-2 text-ink hover:text-accent transition-colors"
@@ -326,13 +326,22 @@ export default function App() {
           >
             <Menu size={24} />
           </button>
-          <div>
-            <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.4em] text-accent uppercase block mb-2 leading-none">
-              Star Wars
-            </span>
-            <h1 className="font-serif text-3xl sm:text-6xl font-black uppercase tracking-tighter leading-[0.8]">
-              The High Republic
-            </h1>
+          
+          <div className="flex items-center gap-4">
+            <img 
+              src="https://static.wikia.nocookie.net/starwars/images/a/ad/High_Republic_symbol.svg/revision/latest?cb=20250517185050" 
+              alt="High Republic Symbol" 
+              className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 filter invert dark:invert-0"
+              referrerPolicy="no-referrer"
+            />
+            <div>
+              <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.4em] text-accent uppercase block mb-1 sm:mb-2 leading-none">
+                Star Wars
+              </span>
+              <h1 className="font-serif text-2xl sm:text-5xl font-black uppercase tracking-tighter leading-tight sm:leading-[0.8]">
+                The High Republic:<br className="sm:hidden" /> Reading List
+              </h1>
+            </div>
           </div>
         </div>
         
@@ -544,22 +553,32 @@ export default function App() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto px-10 lg:px-16 py-10">
-          {/* Sync Status Overlay */}
-          <AnimatePresence>
-            {syncStatus.message && (
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={`mb-10 p-4 border text-[11px] font-bold uppercase tracking-widest flex items-center justify-between ${
-                  syncStatus.status === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'
-                }`}
-              >
-                <span>{syncStatus.message}</span>
-                <button onClick={() => setSyncStatus(prev => ({ ...prev, message: '' }))}>[ Close ]</button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Sync Status Indicator (Floating) */}
+          <div className="sticky top-0 z-30 -mt-2 mb-10 flex items-center gap-4 px-5 py-3 border border-line bg-paper/80 backdrop-blur-md shadow-sm transition-all rounded-sm">
+            <div className={`w-2 h-2 rounded-full shrink-0 transition-all duration-500 ${
+              syncStatus.status === 'syncing' ? 'bg-amber-400 animate-pulse shadow-[0_0_10px_rgba(251,191,36,0.6)]' : 
+              syncStatus.status === 'error' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]' : 
+              'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]'
+            }`} />
+            <div className="flex flex-1 items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ink">
+                  {syncStatus.status === 'syncing' ? 'Synchronizing' : 
+                   syncStatus.status === 'error' ? 'Out of Sync' : 'Synced'}
+                </span>
+                {syncStatus.message && syncStatus.status === 'error' && (
+                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest hidden sm:inline">
+                    — {syncStatus.message}
+                   </span>
+                )}
+              </div>
+              {syncStatus.lastSync && (
+                <span className="text-[8px] font-bold uppercase tracking-widest text-muted opacity-60">
+                  Last Update: {syncStatus.lastSync.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row gap-6 mb-10 pb-6 border-b border-line">
