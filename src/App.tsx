@@ -20,7 +20,8 @@ import {
   Sun,
   Palette,
   Menu,
-  X
+  X,
+  Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -141,6 +142,40 @@ const BookCover: FC<{ title: string; initialCoverUrl?: string }> = ({ title, ini
   );
 }
 
+const StarRating: FC<{ 
+  rating: number; 
+  onRate: (rating: number) => void;
+  size?: number;
+  interactive?: boolean;
+}> = ({ rating, onRate, size = 14, interactive = true }) => {
+  const [hover, setHover] = useState(0);
+
+  return (
+    <div className={`flex gap-0.5 ${interactive ? 'cursor-pointer' : ''}`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          size={size}
+          className={`transition-all duration-200 ${
+            (hover || rating) >= star 
+              ? 'fill-amber-400 text-amber-400' 
+              : 'text-muted/30'
+          } ${interactive ? 'hover:scale-125' : ''}`}
+          onMouseEnter={() => interactive && setHover(star)}
+          onMouseLeave={() => interactive && setHover(0)}
+          onClick={(e) => {
+            if (interactive) {
+              e.stopPropagation();
+              onRate(star === rating ? 0 : star);
+            }
+          }}
+          strokeWidth={2.5}
+        />
+      ))}
+    </div>
+  );
+};
+
 export default function App() {
   const [books, setBooks] = useState<Book[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -148,10 +183,14 @@ export default function App() {
     
     try {
       const savedBooks = JSON.parse(saved) as Book[];
-      // Merge saved 'read' state into the latest HIGH_REPUBLIC_DATA to ensure we have coverUrls
+      // Merge saved state into the latest HIGH_REPUBLIC_DATA to ensure we have coverUrls
       return HIGH_REPUBLIC_DATA.map(book => {
         const savedBook = savedBooks.find(sb => sb.id === book.id);
-        return savedBook ? { ...book, read: savedBook.read } : book;
+        return savedBook ? { 
+          ...book, 
+          read: savedBook.read,
+          rating: savedBook.rating || 0 
+        } : { ...book, rating: 0 };
       });
     } catch (e) {
       return HIGH_REPUBLIC_DATA;
@@ -200,7 +239,8 @@ export default function App() {
                             match.read === 'TRUE' || 
                             match.read === 'true' || 
                             match.read === 1;
-              return { ...book, read: isRead };
+              const rating = Number(match.rating) || 0;
+              return { ...book, read: isRead, rating };
             }
             return book;
           });
@@ -259,7 +299,11 @@ export default function App() {
 
     try {
       // We send simple JSON strings as text/plain to bypass CORS/Preflight issues with Google Script
-      const payload = JSON.stringify(dataToSync.map(b => ({ title: b.title, read: b.read })));
+      const payload = JSON.stringify(dataToSync.map(b => ({ 
+        title: b.title, 
+        read: b.read, 
+        rating: b.rating || 0 
+      })));
       
       await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -288,6 +332,14 @@ export default function App() {
   const toggleRead = (id: string) => {
     const updatedBooks = books.map(book => 
       book.id === id ? { ...book, read: !book.read } : book
+    );
+    setBooks(updatedBooks);
+    handleSync(updatedBooks); // Trigger auto-sync
+  };
+
+  const handleRate = (id: string, rating: number) => {
+    const updatedBooks = books.map(book => 
+      book.id === id ? { ...book, rating } : book
     );
     setBooks(updatedBooks);
     handleSync(updatedBooks); // Trigger auto-sync
@@ -461,6 +513,14 @@ export default function App() {
                   <div className="text-[10px] font-bold uppercase tracking-widest text-accent mb-2">
                     {nextToRead.phase} • {nextToRead.format}
                   </div>
+                  <div className="mb-4">
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-muted mb-2">My Rating</div>
+                    <StarRating 
+                      rating={nextToRead.rating || 0} 
+                      onRate={(r) => handleRate(nextToRead.id, r)} 
+                      size={18}
+                    />
+                  </div>
                   <a 
                     href={getSmartLink(nextToRead.title)}
                     target="_blank"
@@ -631,11 +691,12 @@ export default function App() {
           </div>
 
           {/* List Header */}
-          <div className="grid grid-cols-[40px_1fr_120px_100px] mb-4 pb-3 editorial-header-line text-[10px] font-black uppercase tracking-[0.2em] text-muted">
+          <div className="grid grid-cols-[40px_1fr_120px_120px_100px] mb-4 pb-3 editorial-header-line text-[10px] font-black uppercase tracking-[0.2em] text-muted">
             <div></div>
             <div>Title & Description</div>
             <div className="hidden sm:block">Format</div>
-            <div className="hidden sm:block">Phase</div>
+            <div className="hidden sm:block text-center">Rating</div>
+            <div className="hidden sm:block text-right">Phase</div>
           </div>
 
           {/* List Rows */}
@@ -648,7 +709,7 @@ export default function App() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   key={book.id}
-                  className={`grid grid-cols-[40px_1fr_120px_100px] py-4 border-b border-line items-center group transition-opacity ${book.read ? 'opacity-40 line-through' : 'opacity-100 hover:bg-ink/5'}`}
+                  className={`grid grid-cols-[40px_1fr_120px_120px_100px] py-4 border-b border-line items-center group transition-opacity ${book.read ? 'opacity-40 line-through' : 'opacity-100 hover:bg-ink/5'}`}
                 >
                   <div className="flex justify-center">
                     <button 
@@ -674,9 +735,16 @@ export default function App() {
                         <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                       </h3>
                     </a>
-                    <div className="sm:hidden flex gap-2 mt-1">
-                      <span className="text-[9px] font-bold text-accent uppercase tracking-wider">{book.phase}</span>
-                      <span className="text-[9px] font-medium text-muted uppercase tracking-wider">{book.format}</span>
+                    <div className="sm:hidden flex flex-wrap gap-2 mt-2 items-center">
+                      <div className="flex gap-2 mr-2 pr-2 border-r border-line">
+                        <span className="text-[9px] font-bold text-accent uppercase tracking-wider">{book.phase}</span>
+                        <span className="text-[9px] font-medium text-muted uppercase tracking-wider">{book.format}</span>
+                      </div>
+                      <StarRating 
+                        rating={book.rating || 0} 
+                        onRate={(r) => handleRate(book.id, r)} 
+                        size={12}
+                      />
                     </div>
                   </div>
 
@@ -684,7 +752,17 @@ export default function App() {
                     {book.format}
                   </div>
 
-                  <div className="hidden sm:block text-[10px] font-black text-accent uppercase tracking-[0.1em]">
+                  <div className="hidden sm:block">
+                    <div className="flex justify-center">
+                      <StarRating 
+                        rating={book.rating || 0} 
+                        onRate={(r) => handleRate(book.id, r)} 
+                        size={14}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:block text-[10px] font-black text-accent uppercase tracking-[0.1em] text-right">
                     {book.phase}
                   </div>
                 </motion.div>

@@ -18,6 +18,7 @@ export interface Book {
   format: Format;
   read: boolean;
   coverUrl?: string;
+  rating?: number;
 }
 
 export interface SyncStatus {
